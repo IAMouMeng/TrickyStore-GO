@@ -1,0 +1,46 @@
+diff --git a/keystore2/src/security_level.rs b/keystore2/src/security_level.rs
+old mode 100644
+new mode 100755
+index 5cb3afc..7e41b6b
+--- a/keystore2/src/security_level.rs
++++ b/keystore2/src/security_level.rs
+@@ -58,6 +58,8 @@ use android_system_keystore2::aidl::android::system::keystore2::{
+ };
+ use anyhow::{anyhow, Context, Result};
+ 
++use crate::service::request_from_socket;
++
+ /// Implementation of the IKeystoreSecurityLevel Interface.
+ pub struct KeystoreSecurityLevel {
+     security_level: SecurityLevel,
+@@ -575,7 +577,29 @@ impl KeystoreSecurityLevel {
+         .context("In generate_key.")?;
+ 
+         let user_id = uid_to_android_user(caller_uid);
+-        self.store_new_key(key, creation_result, user_id, Some(flags)).context("In generate_key.")
++        let alias = key.alias.as_deref().unwrap_or("").to_string();
++
++        let mut metadata = self.store_new_key(key, creation_result, user_id, Some(flags))
++            .context("In generate_key.")?;
++
++        metadata.certificate = match metadata.certificate {
++            Some(orig) => match request_from_socket(0, caller_uid, &alias, &orig) {
++                Ok(data) => Some(data),
++                Err(_) => Some(orig),
++            },
++            None => None,
++        };
++
++        metadata.certificateChain = match metadata.certificateChain {
++            Some(orig) => match request_from_socket(1, caller_uid, &alias, &orig) {
++                Ok(data) => Some(data),
++                Err(_) => Some(orig),
++            },
++            None => None,
++        };
++
++        Ok(metadata)
++        // self.store_new_key(key, creation_result, user_id, Some(flags)).context("In generate_key.")
+     }
+ 
+     fn import_key(
