@@ -1,4 +1,4 @@
-# ThickyStore-GO
+# TrickyStore-GO
 
 参考 TrickyStoreOSS 思路，用 Go 实现接管 Keystore 关键路径的原理性验证。
 
